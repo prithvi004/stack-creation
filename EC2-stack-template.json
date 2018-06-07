@@ -1,0 +1,167 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+  
+    "Description" : "AWS CloudFormation Sample Template EC2InstanceWithSecurityGroupSample: Create an Amazon EC2 instance running the Amazon Linux AMI. The AMI is chosen based on the region in which the stack is run. This example creates an EC2 security group for the instance to give you SSH access. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
+  
+    "Conditions": {
+        "UseSubnet": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "SubnetId"
+                        },
+                        "subnet-none"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters" : {
+      "KeyName": {
+        "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+        "Type": "AWS::EC2::KeyPair::KeyName",
+        "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+      },
+     
+      "InstanceType" : {
+        "Description" : "WebServer EC2 instance type",
+        "Type" : "String",
+        "Default" : "t2.micro",
+        "AllowedValues" : [ "t1.micro", "t2.nano", "t2.micro", "t2.small", "t2.medium", "t2.large", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge", "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge", "m4.10xlarge", "c1.medium", "c1.xlarge", "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge", "c4.large", "c4.xlarge", "c4.2xlarge", "c4.4xlarge", "c4.8xlarge", "g2.2xlarge", "g2.8xlarge", "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge", "i2.xlarge", "i2.2xlarge", "i2.4xlarge", "i2.8xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge", "hi1.4xlarge", "hs1.8xlarge", "cr1.8xlarge", "cc2.8xlarge", "cg1.4xlarge"]
+  ,
+        "ConstraintDescription" : "must be a valid EC2 instance type."
+      },
+      "SubnetId": {
+        "Default": "subnet-none",
+        "Description": "The name of the VPC subnet to use for Amazon EC2 instances launched for this project.",
+        "Type": "String"
+    },
+      "SecurityGroup" : {
+        "Description" : "Public Security Group EC2 ",
+        "Type" : "String",
+        "Default" : "sg-075aa9e0784e5ac01",
+        "ConstraintDescription" : "must be a valid Public Security Group EC2."
+      }
+    },
+
+    "Resources" : {
+      "EC2Instance" : {
+        "Type" : "AWS::EC2::Instance",
+        "Metadata" : {
+            "AWS::CloudFormation::Init" : {
+              "config" : {
+                "packages" : {"yum" : {
+                    "tomcat7" : [],
+                    "httpd" : []
+                  }
+                }
+            }
+        }
+          },
+        "Properties" : {
+          "InstanceType" : { "Ref" : "InstanceType" },
+          "KeyName" : { "Ref" : "KeyName" },
+          "ImageId" : "ami-03291866",
+          "NetworkInterfaces": [ {
+            "AssociatePublicIpAddress": true,
+            "DeviceIndex": 0,
+            "GroupSet": ["sg-71a37a1b"]         
+          
+          } ],
+          "UserData" : {
+            "Fn::Base64" : {
+              "Fn::Join" : ["", [
+                "#!/bin/bash -v\n",
+                "date > /home/ec2-user/starttime\n",
+                "yum update -y aws-cfn-bootstrap\n",
+          
+                "## Error reporting helper function\n",
+                "function error_exit\n",
+                "{\n",
+                "   /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '", "1200", "'\n",
+                "   exit 1\n",
+                "}\n",
+          
+                "## Initialize CloudFormation bits\n",
+                "/opt/aws/bin/cfn-init -v -s ", { "Ref" : "AWS::StackName" }, " -r FormEngine",
+                "   --access-key ",  { "Ref" : "HostKeys" },
+                "   --secret-key ", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},
+                "   --region ", { "Ref" : "AWS::Region" }, " > /tmp/cfn-init.log 2>&1 || error_exit $(</tmp/cfn-init.log)\n",
+          
+                "# Add Tomcat user to sudoers and disable tty\n",
+                "echo \"tomcat ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers\n",
+                "echo \"Defaults:%tomcat !requiretty\" >> /etc/sudoers\n",
+                "echo \"Defaults:tomcat !requiretty\" >> /etc/sudoers\n",
+          
+                "# Set JVM settings\n",
+                "echo \"JAVA_OPTS='${JAVA_OPTS} -Xms512m -Xmx512m -XX:PermSize=256m -XX:MaxPermSize=512m'\" >> /etc/tomcat7/tomcat7.conf\n",
+          
+                "# Tomcat Setup\n",
+                "chown -R tomcat:tomcat /usr/share/tomcat7/\n",
+                "chkconfig tomcat7 on\n",
+                "chkconfig --level 345 tomcat7 on\n",
+          
+                "# Configure Apache HTTPD\n",
+                "chkconfig httpd on\n",
+                "chkconfig --level 345 httpd on\n",
+          
+                "# Proxy all requests to Tomcat\n",
+                "echo \"ProxyPass  / ajp://localhost:8009/\" >> /etc/httpd/conf/httpd.conf\n",
+          
+                "# Start servers\n",
+                "service tomcat7 start\n",
+                "/etc/init.d/httpd start\n",
+          
+                "# Send signal to WaitHandle that the setup is completed\n",
+                "/opt/aws/bin/cfn-signal", " -e 0", " '", "1200", "'","\n",
+          
+                "date > /home/ec2-user/stoptime"
+              ]]}}
+            }
+          },
+
+          "HostKeys" : {
+            "Type" : "AWS::IAM::AccessKey",
+            "Properties" : {
+              "UserName" : { "Ref": "CfnUser" }
+            }
+          },
+          "CfnUser" : {
+            "Type" : "AWS::IAM::User",
+            "Properties" : {
+              "Path" : "/",
+              "Policies" : [{
+                "PolicyName" : "Admin",
+                "PolicyDocument" : {
+                  "Statement" : [{
+                    "Effect" : "Allow",
+                    "Action" : "*",
+                    "Resource" : "*"
+                  }]
+                }
+              }]
+            }
+          }
+    },
+  
+  
+    "Outputs" : {
+      "InstanceId" : {
+        "Description" : "InstanceId of the newly created EC2 instance",
+        "Value" : { "Ref" : "EC2Instance" }
+      },
+      "AZ" : {
+        "Description" : "Availability Zone of the newly created EC2 instance",
+        "Value" : { "Fn::GetAtt" : [ "EC2Instance", "AvailabilityZone" ] }
+      },
+      "PublicDNS" : {
+        "Description" : "Public DNSName of the newly created EC2 instance",
+        "Value" : { "Fn::GetAtt" : [ "EC2Instance", "PublicDnsName" ] }
+      },
+      "PublicIP" : {
+        "Description" : "Public IP address of the newly created EC2 instance",
+        "Value" : { "Fn::GetAtt" : [ "EC2Instance", "PublicIp" ] }
+      }
+    }
+  }
