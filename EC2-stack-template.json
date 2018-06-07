@@ -61,7 +61,7 @@
           },
         "Properties" : {
           "InstanceType" : { "Ref" : "InstanceType" },
-          "KeyName" : { "Ref" : "KeyName" },
+          "KeyName" : "prithvi-instance",
           "ImageId" : "ami-03291866",
           "NetworkInterfaces": [ {
             "AssociatePublicIpAddress": true,
