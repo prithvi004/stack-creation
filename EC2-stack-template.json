@@ -61,12 +61,12 @@
           },
         "Properties" : {
           "InstanceType" : { "Ref" : "InstanceType" },
-          "KeyName" : "prithvi-instance",
-          "ImageId" : "ami-03291866",
+          "KeyName" : "keypair-virginia",
+          "ImageId" : "ami-6871a115",
           "NetworkInterfaces": [ {
             "AssociatePublicIpAddress": true,
             "DeviceIndex": 0,
-            "GroupSet": ["sg-71a37a1b"]         
+            "GroupSet": ["sg-c9c69381"]         
           
           } ],
           "UserData" : {
