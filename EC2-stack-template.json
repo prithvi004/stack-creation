@@ -72,51 +72,23 @@
           "UserData" : {
             "Fn::Base64" : {
               "Fn::Join" : ["", [
-                "#!/bin/bash -v\n",
-                "date > /home/ec2-user/starttime\n",
-                "yum update -y aws-cfn-bootstrap\n",
-          
-                "## Error reporting helper function\n",
-                "function error_exit\n",
-                "{\n",
-                "   /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '", "1200", "'\n",
-                "   exit 1\n",
-                "}\n",
-          
-                "## Initialize CloudFormation bits\n",
-                "/opt/aws/bin/cfn-init -v -s ", { "Ref" : "AWS::StackName" }, " -r FormEngine",
-                "   --access-key ",  { "Ref" : "HostKeys" },
-                "   --secret-key ", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},
-                "   --region ", { "Ref" : "AWS::Region" }, " > /tmp/cfn-init.log 2>&1 || error_exit $(</tmp/cfn-init.log)\n",
-          
-                "# Add Tomcat user to sudoers and disable tty\n",
-                "echo \"tomcat ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers\n",
-                "echo \"Defaults:%tomcat !requiretty\" >> /etc/sudoers\n",
-                "echo \"Defaults:tomcat !requiretty\" >> /etc/sudoers\n",
-          
-                "# Set JVM settings\n",
-                "echo \"JAVA_OPTS='${JAVA_OPTS} -Xms512m -Xmx512m -XX:PermSize=256m -XX:MaxPermSize=512m'\" >> /etc/tomcat7/tomcat7.conf\n",
-          
-                "# Tomcat Setup\n",
-                "chown -R tomcat:tomcat /usr/share/tomcat7/\n",
-                "chkconfig tomcat7 on\n",
-                "chkconfig --level 345 tomcat7 on\n",
-          
-                "# Configure Apache HTTPD\n",
-                "chkconfig httpd on\n",
-                "chkconfig --level 345 httpd on\n",
-          
-                "# Proxy all requests to Tomcat\n",
-                "echo \"ProxyPass  / ajp://localhost:8009/\" >> /etc/httpd/conf/httpd.conf\n",
-          
-                "# Start servers\n",
-                "service tomcat7 start\n",
-                "/etc/init.d/httpd start\n",
-          
-                "# Send signal to WaitHandle that the setup is completed\n",
-                "/opt/aws/bin/cfn-signal", " -e 0", " '", "1200", "'","\n",
-          
-                "date > /home/ec2-user/stoptime"
+                "sudo yum install java-1.8.0-openjdk.x86_64\n",
+                "echo java -version\n",
+                "sudo groupadd tomcat\n",
+                "sudo mkdir /opt/tomcat\n",
+                "sudo useradd -s /bin/nologin -g tomcat -d /opt/tomcat tomcat\n",
+                "sudo yum install wget\n",
+                "wget http://www-us.apache.org/dist/tomcat/tomcat-8/v8.0.52/bin/apache-tomcat-8.0.52.tar.gz\n",
+                "sudo tar -zxvf apache-tomcat-8.0.52.tar.gz -C /opt/tomcat --strip-components=1\n",
+                "cd /opt/tomcat\n",
+                "sudo chgrp -R tomcat conf\n",
+                "sudo chmod g+rwx conf\n",
+                "sudo chmod g+r conf/*\n",
+                "sudo chown -R tomcat logs/ temp/ webapps/ work/\n",
+                "sudo chgrp -R tomcat bin\n",
+                "sudo chgrp -R tomcat lib\n",
+                "sudo chmod g+rwx bin\n",
+                "sudo chmod g+r bin/*\n"
               ]]}}
             }
           },
